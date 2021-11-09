@@ -1,0 +1,135 @@
+---
+title: "lab7"
+author: "Caroline Shepherd"
+date: "11/9/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE, include = TRUE, message = FALSE, warnings = FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warnings = FALSE)
+```
+
+```{r}
+library(tidyverse)
+library(palmerpenguins)
+library(GGally)
+library(broom)
+library(kableExtra)
+library(modelsummary)
+library(stargazer)
+```
+
+## Explore penguins
+
+Use 'GGally::ggpairs()' to create a pairs plot
+
+```{r}
+ggpairs(penguins)
+```
+
+That's kind of overkill. Let's simplify the variables that we include in our ggpairs plot.
+
+-species
+-bill_length_mm through body_mass_g
+
+```{r}
+penguins %>% 
+  select(species, bill_length_mm:body_mass_g) %>% 
+  ggpairs(aes(color = species))
+```
+## Multiple linear regression
+
+we are going to try to understand (a bit better) the relationships between multiple predictor variables and an outcome variable, which is penguin body mass.
+
+The different predictor variables we're going to try are things like:
+-species
+-flipper length
+-sex
+-bill depth
+
+
+### Model 1
+
+Model body mass based on only flipper length and bill depth (this is a bad idea - there are important variables missing)
+
+```{r}
+model_1 <- lm(body_mass_g ~ flipper_length_mm + bill_depth_mm, data = penguins)
+
+# Call model by name to return only coefficients
+model_1
+
+# If I want to get more information on the model and coefficients
+summary(model_1)
+```
+
+for 'model_1' (just run code and see the coefficients):
+Flipper length - for each 1 mm increase in flipper length we expect (on average) penguin body mass to increase by 51.54 grams if everything else is held constant.
+
+R Squared value means
+76% of variants in penguin body mass is explained by flipper length and bill depth in this model
+This is less than 100% because something is missing - in this case, sex would probably be an important variable we should include
+
+Actually, we think that a model for penguin body mass should contain the variables species, flipper length, and sex
+
+```{r}
+model_2 <- lm(body_mass_g ~ species + flipper_length_mm + sex, data = penguins)
+
+# Let's check out the coefficients:
+model_2
+```
+
+Adelie must be the reference layer because it doesn't show up after 'model_2' - female and adelie have been assigned to 0
+
+# Interpreting the coefficients for:
+flipper length - For each 1mm increase in flipper length, we expect to see penguin body mass to incresae by 20.02
+
+Gentoo: If everything else is held constant, I would expect a penguin from that population to weigh 836.26 grams larger than an Adelie if everything else about them is the same
+
+Male: If everything else is held constant, I would expect a male penguin to be 530.38 grams larger than a female penguin if everything else about them is the same
+
+
+## Visualize this model
+
+```{r}
+ggplot(data = penguins, aes(x = flipper_length_mm, y = body_mass_g)) +
+  geom_point(aes(color = species)) +
+  facet_wrap(~ sex)
+
+```
+
+## A couple ways to get and report MLR model outcomes
+
+use broom::tidy() to get model coefficient ifo into a tidy dataframe
+
+```{r}
+penguin_model2_coef <- tidy(model_2)
+
+penguin_model2_coef
+```
+
+Try to write inline code that spits out the coefficient for gentoo here
+
+`r penguin_model2_coef$estimate[4]`
+
+
+## Look at the model diagnostics
+
+```{r}
+plot(model_2)
+
+summary(model_2)
+```
+
+## Report the model outputs in a summary table
+
+use modelsummary:
+```{r}
+modelsummary(model_2)
+```
+
+Use stargazer
+
+```{r, results = "asis"}
+stargazer(model_2, type = "html")
+```
+
